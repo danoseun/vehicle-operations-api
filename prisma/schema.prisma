@@ -1,0 +1,135 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+// generator client {
+//   provider = "prisma-client-js"
+//   output   = "../src/generated/prisma"
+// }
+
+// datasource db {
+//   provider = "postgresql"
+//   url      = env("DATABASE_URL")
+// }
+
+//
+
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model VehicleType {
+  id          String     @id @default(uuid())
+  name        String     @unique
+  description String?
+  capacity    Int?
+  vehicles    Vehicle[]
+  operations  Operation[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("vehicle_types")
+  OperationRequirement OperationRequirement[]
+}
+
+model Vehicle {
+  id            String      @id @default(uuid())
+  registrationNo String     @unique
+  vehicleTypeId String
+  vehicleType   VehicleType @relation(fields: [vehicleTypeId], references: [id])
+  status        VehicleStatus @default(AVAILABLE)
+  schedules     Schedule[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@map("vehicles")
+}
+
+model Operation {
+  id          String       @id @default(uuid())
+  name        String
+  description String?
+  status      OperationStatus @default(PLANNING)
+  requirements OperationRequirement[]
+  schedules   Schedule[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("operations")
+  VehicleType VehicleType[]
+}
+
+model OperationRequirement {
+  id           String     @id @default(uuid())
+  operationId  String
+  operation    Operation  @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  vehicleTypeId String
+  vehicleType  VehicleType @relation(fields: [vehicleTypeId], references: [id])
+  quantity     Int
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([operationId, vehicleTypeId])
+  @@map("operation_requirements")
+}
+
+model Route {
+  id          String     @id @default(uuid())
+  source      String
+  destination String
+  distance    Float      // in kilometers
+  duration    Int        // in minutes
+  schedules   Schedule[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("routes")
+}
+
+model Schedule {
+  id          String     @id @default(uuid())
+  operationId String
+  operation   Operation  @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  vehicleId   String
+  vehicle     Vehicle    @relation(fields: [vehicleId], references: [id])
+  routeId     String
+  route       Route      @relation(fields: [routeId], references: [id])
+  scheduleDate DateTime
+  startTime   DateTime
+  endTime     DateTime
+  status      ScheduleStatus @default(SCHEDULED)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("schedules")
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  IN_OPERATION
+  MAINTENANCE
+  OUT_OF_SERVICE
+}
+
+enum OperationStatus {
+  PLANNING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum ScheduleStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
